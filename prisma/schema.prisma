@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+model KeyFeature {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation("ProductToKeyFeature", fields: [productId], references: [id], onDelete: Cascade)
+  feature    String
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String  @id @default(uuid())
+  fullName  String
+  email     String  @unique
+  mobile    String  @unique
+  password  String
+  business  Business?
+  addresses Address[]
+  isAdmin   Role @default(user)
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  user
+  admin
+}
+
+model Business {
+  id            String  @id @default(uuid())
+  gstNumber     String  @unique
+  businessName  String
+  businessEmail String  @unique
+  userId        String  @unique
+  addressId     String?
+  address       Address? @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Address {
+  id             String     @id  @default(uuid())
+  userId         String
+  name           String
+  email          String
+  phone          String
+  alternatePhone String?
+  flatNo         String?
+  area           String
+  landmark       String?
+  pincode        String
+  city           String
+  state          String
+  country        String
+  addressType    AddressType
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businesses     Business[]
+}
+
+enum AddressType {
+  business
+  delivery
+}
+
+model MainCategory {
+  id           String       @id @default(uuid())
+  name         String       @unique
+  subCategories SubCategory[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model SubCategory {
+  id              String              @id @default(uuid())
+  name            String              @unique
+  mainCategoryId  String
+  mainCategory    MainCategory        @relation(fields: [mainCategoryId], references: [id], onDelete: Cascade)
+  subCategories2  SubCategoryLevel2[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+model SubCategoryLevel2 {
+  id             String     @id @default(uuid())
+  name           String     @unique
+  subCategoryId  String
+  subCategory    SubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+  products       Product[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model Product {
+  id                     String      @id @default(uuid())  
+  name                   String  
+  price                  Float  
+  rating                 Float       @default(0.0)  
+  offers                 Offer[]  
+  about                  String?  
+  keyFeatures            KeyFeature[] @relation("ProductToKeyFeature")
+  details                String?  
+  specifications         Specification[]  
+  warranty               String?  
+  subCategoryLevel2Id    String
+  subCategoryLevel2      SubCategoryLevel2 @relation(fields: [subCategoryLevel2Id], references: [id], onDelete: Cascade)
+  createdAt              DateTime   @default(now())  
+  updatedAt              DateTime   @updatedAt  
+}
+
+model Offer {
+  id         String  @id @default(uuid())  
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)  
+  productId  String  
+  title      String  
+  discount   Float  
+  couponCode String?  
+  expiryDate DateTime?  
+}
+
+model Specification {
+  id         String  @id @default(uuid())  
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)  
+  productId  String  
+  key        String  
+  value      String  
+}
