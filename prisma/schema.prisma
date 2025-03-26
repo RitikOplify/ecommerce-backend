@@ -22,13 +22,16 @@ model User {
   password  String
   business  Business?
   addresses Address[]
-  isAdmin   Role @default(user)
   createdAt DateTime @default(now())
 }
 
-enum Role {
-  user
-  admin
+model Admin {
+  id        String  @id @default(uuid())
+  fullName  String
+  email     String  @unique
+  mobile    String  @unique
+  password  String
+  createdAt DateTime @default(now())
 }
 
 model Business {

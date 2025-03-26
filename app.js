@@ -6,7 +6,10 @@ const ErrorHandler = require("./utils/errorHandler");
 const user = require("./routes/userRoutes");
 const business = require("./routes/businessRoute");
 const address = require("./routes/addressRoute");
+const admin = require("./routes/adminRoute");
 
+const categoryRoutes = require("./routes/categoryRoute");
+const productRoutes = require("./routes/productRoute");
 const { generatedErrors } = require("./middlewares/errors");
 
 dotenv.config({ path: "./.env" });
@@ -19,8 +22,13 @@ app.use(logger("tiny"));
 app.use(express.urlencoded({ extended: false }));
 
 app.use("/user", user);
+app.use("/admin", admin);
+
 app.use("/business", business);
 app.use("/address", address);
+
+app.use("/category", categoryRoutes);
+app.use("/product", productRoutes);
 
 app.get("/", (req, res) => {
   res.json({ msg: "Hello👋, From Server" });
@@ -32,7 +40,5 @@ app.all("*", (req, res, next) => {
 app.use(generatedErrors);
 
 app.listen(process.env.PORT || 8080, () => {
-  console.log(
-    `App is running on PORT 8080\nhttp://localhost:${process.env.PORT}`
-  );
+  console.log(`Server running on PORT:${process.env.PORT}`);
 });

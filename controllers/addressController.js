@@ -1,9 +1,17 @@
 const { PrismaClient } = require("@prisma/client");
 const { catchAsyncErrors } = require("../middlewares/catchAsyncErrors");
 const ErrorHandler = require("../utils/errorHandler");
+const { addressSchema } = require("../schema/addressSchema");
 const prisma = new PrismaClient();
 
 exports.createAddress = catchAsyncErrors(async (req, res, next) => {
+  const validationResult = addressSchema.safeParse(req.body);
+  if (!validationResult.success) {
+    return next(
+      new ErrorHandler(validationResult.error.errors[0].message, 400)
+    );
+  }
+
   const {
     name,
     email,
@@ -17,24 +25,7 @@ exports.createAddress = catchAsyncErrors(async (req, res, next) => {
     state,
     country,
     addressType,
-  } = req.body;
-
-  if (
-    !name ||
-    !phone ||
-    !email ||
-    !flatNo ||
-    !area ||
-    !pincode ||
-    !city ||
-    !state ||
-    !country ||
-    !addressType
-  ) {
-    return next(
-      new ErrorHandler("Please provide all required address details.", 400)
-    );
-  }
+  } = validationResult.data;
 
   if (!["business", "delivery"].includes(addressType)) {
     return next(

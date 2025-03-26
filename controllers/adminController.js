@@ -4,15 +4,16 @@ var jwt = require("jsonwebtoken");
 const { catchAsyncErrors } = require("../middlewares/catchAsyncErrors");
 const ErrorHandler = require("../utils/errorHandler");
 const { generateTokens } = require("../utils/generateToken");
+const { signUpSchema, loginSchema } = require("../schema/userSchema");
+
 const {
   accessTokenCookieOptions,
   refreshTokenCookieOptions,
 } = require("../utils/cookieOptions");
-const { signUpSchema, loginSchema } = require("../schema/userSchema");
 
 const prisma = new PrismaClient();
 
-exports.signUp = catchAsyncErrors(async (req, res, next) => {
+exports.adminSignUp = catchAsyncErrors(async (req, res, next) => {
   const validationResult = signUpSchema.safeParse(req.body);
   if (!validationResult.success) {
     return next(
@@ -22,11 +23,11 @@ exports.signUp = catchAsyncErrors(async (req, res, next) => {
 
   const { fullName, email, mobile, password } = validationResult.data;
 
-  const existingUser = await prisma.user.findFirst({
+  const existingAdmin = await prisma.admin.findFirst({
     where: { OR: [{ email }, { mobile }] },
   });
 
-  if (existingUser) {
+  if (existingAdmin) {
     return next(
       new ErrorHandler(
         "An account with this email or mobile number already exists. Please log in.",
@@ -37,7 +38,7 @@ exports.signUp = catchAsyncErrors(async (req, res, next) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const user = await prisma.user.create({
+  const admin = await prisma.admin.create({
     data: {
       fullName,
       email,
@@ -46,7 +47,7 @@ exports.signUp = catchAsyncErrors(async (req, res, next) => {
     },
   });
 
-  const { accessToken, refreshToken } = generateTokens(user.id);
+  const { accessToken, refreshToken } = generateTokens(admin.id, true);
 
   res.cookie("accessToken", accessToken, accessTokenCookieOptions);
   res.cookie("refreshToken", refreshToken, refreshTokenCookieOptions);
@@ -57,7 +58,7 @@ exports.signUp = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
-exports.login = catchAsyncErrors(async (req, res, next) => {
+exports.adminLogin = catchAsyncErrors(async (req, res, next) => {
   const validationResult = loginSchema.safeParse(req.body);
   if (!validationResult.success) {
     return next(
@@ -66,22 +67,21 @@ exports.login = catchAsyncErrors(async (req, res, next) => {
   }
 
   const { email, password } = validationResult.data;
-
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
+  const admin = await prisma.admin.findUnique({ where: { email } });
+  if (!admin) {
     return next(
       new ErrorHandler("Incorrect email or password. Please try again.", 401)
     );
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await bcrypt.compare(password, admin.password);
   if (!isMatch) {
     return next(
       new ErrorHandler("Incorrect email or password. Please try again.", 401)
     );
   }
 
-  const { accessToken, refreshToken } = generateTokens(user.id);
+  const { accessToken, refreshToken } = generateTokens(admin.id, true);
 
   res.cookie("accessToken", accessToken, accessTokenCookieOptions);
   res.cookie("refreshToken", refreshToken, refreshTokenCookieOptions);
@@ -98,14 +98,15 @@ exports.refreshToken = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Session expired. Please log in again.", 401));
   }
   const { id } = jwt.verify(refreshToken, process.env.JWT_SECRET);
-  const user = await prisma.user.findUnique({ where: { id } });
+  const admin = await prisma.admin.findUnique({ where: { id } });
 
-  if (!user) {
+  if (!admin) {
     return next(new ErrorHandler("User not found. Please log in again.", 404));
   }
 
   const { accessToken, refreshToken: newRefreshToken } = generateTokens(
-    user.id
+    admin.id,
+    true
   );
 
   res.cookie("refreshToken", newRefreshToken, refreshTokenCookieOptions);
@@ -116,88 +117,6 @@ exports.refreshToken = catchAsyncErrors(async (req, res, next) => {
     accessToken,
     message: "Session refreshed successfully.",
   });
-});
-
-exports.currentUser = catchAsyncErrors(async (req, res, next) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.id },
-    select: {
-      fullName: true,
-      email: true,
-      addresses: true,
-      business: true,
-      business: {
-        select: {
-          gstNumber: true,
-          businessName: true,
-          businessEmail: true,
-          address: true,
-        },
-      },
-    },
-  });
-
-  if (!user) {
-    return next(new ErrorHandler("User not found. Please log in.", 404));
-  }
-
-  res.status(200).json({ success: true, user });
-});
-
-exports.updateUser = catchAsyncErrors(async (req, res, next) => {
-  const { fullName, mobile } = req.body;
-
-  const user = await prisma.user.update({
-    where: { id: req.id },
-    data: {
-      fullName,
-      mobile,
-    },
-  });
-
-  if (!user) {
-    return next(
-      new ErrorHandler("User not found. Unable to update profile.", 404)
-    );
-  }
-
-  res
-    .status(200)
-    .json({ success: true, message: "Profile updated successfully.", user });
-});
-
-exports.getUsers = catchAsyncErrors(async (req, res, next) => {
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      mobile: true,
-      isAdmin: true,
-      createdAt: true,
-    },
-  });
-
-  if (!users.length) {
-    return next(new ErrorHandler("No users found in the system.", 404));
-  }
-
-  res.status(200).json({ success: true, users });
-});
-
-exports.deleteUser = catchAsyncErrors(async (req, res, next) => {
-  const { id } = req.params;
-
-  const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) {
-    return next(new ErrorHandler("User not found. Unable to delete.", 404));
-  }
-
-  await prisma.user.delete({ where: { id } });
-
-  res
-    .status(200)
-    .json({ success: true, message: "User deleted successfully." });
 });
 
 exports.logOut = catchAsyncErrors(async (req, res, next) => {

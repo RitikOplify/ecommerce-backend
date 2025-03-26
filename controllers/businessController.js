@@ -1,19 +1,18 @@
 const { PrismaClient } = require("@prisma/client");
 const { catchAsyncErrors } = require("../middlewares/catchAsyncErrors");
 const ErrorHandler = require("../utils/errorHandler");
+const { businessSchema } = require("../schema/businessSchema");
 const prisma = new PrismaClient();
 
 exports.createBusiness = catchAsyncErrors(async (req, res, next) => {
-  const { gstNumber, businessName, businessEmail } = req.body;
-
-  if (!gstNumber || !businessEmail || !businessName) {
+  const validationResult = businessSchema.safeParse(req.body);
+  if (!validationResult.success) {
     return next(
-      new ErrorHandler(
-        "Please provide all required fields: GST Number, Business Name, Business Email, and Address.",
-        400
-      )
+      new ErrorHandler(validationResult.error.errors[0].message, 400)
     );
   }
+
+  const { gstNumber, businessName, businessEmail } = validationResult.data;
 
   const businessExists = await prisma.business.findFirst({
     where: {
