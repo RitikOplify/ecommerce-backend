@@ -2,132 +2,148 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model KeyFeature {
-  id         String   @id @default(uuid())
-  productId  String
-  product    Product  @relation("ProductToKeyFeature", fields: [productId], references: [id], onDelete: Cascade)
-  feature    String
-}
-
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String  @id @default(uuid())
-  fullName  String
-  email     String  @unique
-  mobile    String  @unique
-  password  String
-  business  Business?
-  addresses Address[]
-  createdAt DateTime @default(now())
+enum LeadStatus {
+  NEW
+  IN_PROGRESS
+  CLOSED
 }
 
-model Admin {
-  id        String  @id @default(uuid())
-  fullName  String
-  email     String  @unique
-  mobile    String  @unique
-  password  String
-  createdAt DateTime @default(now())
+enum LeadStage {
+  INQUIRY
+  NEGOTIATION
+  FINALIZED
 }
 
-model Business {
-  id            String  @id @default(uuid())
-  gstNumber     String  @unique
-  businessName  String
-  businessEmail String  @unique
-  userId        String  @unique
-  addressId     String?
-  address       Address? @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum DealerStatus {
+  ACTIVE
+  INACTIVE
 }
 
-model Address {
-  id             String     @id  @default(uuid())
-  userId         String
-  name           String
-  email          String
-  phone          String
-  alternatePhone String?
-  flatNo         String?
-  area           String
-  landmark       String?
-  pincode        String
-  city           String
-  state          String
-  country        String
-  addressType    AddressType
-  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businesses     Business[]
+model Company {
+  id          String        @id @default(uuid())
+  name        String
+  email       String        @unique
+  role        String        @default("admin")
+  password    String
+  executives  Executive[]
+  dealers     Dealer[]
+  leads       Lead[]
+  products    Product[]
+  categories  Category[]
+  createdAt   DateTime      @default(now())
 }
 
-enum AddressType {
-  business
-  delivery
+model Category {
+  id            String        @id @default(uuid())
+  name          String
+  companyId     String
+  @@index([companyId])
+  company       Company       @relation(fields: [companyId], references: [id])
+  subcategories Subcategory[]
+  products      Product[]
+  createdAt     DateTime      @default(now())
 }
 
-model MainCategory {
-  id           String       @id @default(uuid())
-  name         String       @unique
-  subCategories SubCategory[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-}
-
-model SubCategory {
-  id              String              @id @default(uuid())
-  name            String              @unique
-  mainCategoryId  String
-  mainCategory    MainCategory        @relation(fields: [mainCategoryId], references: [id], onDelete: Cascade)
-  subCategories2  SubCategoryLevel2[]
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-}
-
-model SubCategoryLevel2 {
-  id             String     @id @default(uuid())
-  name           String     @unique
-  subCategoryId  String
-  subCategory    SubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
-  products       Product[]
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+model Subcategory {
+  id         String     @id @default(uuid())
+  name       String
+  categoryId String
+  category   Category   @relation(fields: [categoryId], references: [id])
+  products   Product[]
+  createdAt  DateTime   @default(now())
 }
 
 model Product {
-  id                     String      @id @default(uuid())  
-  name                   String  
-  price                  Float  
-  rating                 Float       @default(0.0)  
-  offers                 Offer[]  
-  about                  String?  
-  keyFeatures            KeyFeature[] @relation("ProductToKeyFeature")
-  details                String?  
-  specifications         Specification[]  
-  warranty               String?  
-  subCategoryLevel2Id    String
-  subCategoryLevel2      SubCategoryLevel2 @relation(fields: [subCategoryLevel2Id], references: [id], onDelete: Cascade)
-  createdAt              DateTime   @default(now())  
-  updatedAt              DateTime   @updatedAt  
+  id            String      @id @default(uuid())
+  name          String
+  companyId     String
+  @@index([companyId])
+  company       Company     @relation(fields: [companyId], references: [id])
+  categoryId    String?
+  category      Category?   @relation(fields: [categoryId], references: [id])
+  @@index([categoryId])
+  @@index([subcategoryId])
+  subcategoryId String?
+  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id])
+  leads         Lead[]
+  createdAt     DateTime    @default(now())
 }
 
-model Offer {
-  id         String  @id @default(uuid())  
-  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)  
-  productId  String  
-  title      String  
-  discount   Float  
-  couponCode String?  
-  expiryDate DateTime?  
+model Executive {
+  id        String   @id @default(uuid())
+  username  String
+  email     String   @unique
+  password  String
+  role      String   @default("executive")
+  companyId String
+  @@index([companyId])
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  leads     Lead[]
+  createdAt DateTime @default(now())
 }
 
-model Specification {
-  id         String  @id @default(uuid())  
-  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)  
-  productId  String  
-  key        String  
-  value      String  
+model Dealer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  role      String   @default("dealer")
+  gstNo     String   @unique
+  state     String
+  city      String
+  pincode   String
+  companyId String
+  password  String
+  status DealerStatus @default(INACTIVE)
+  @@index([companyId])
+  company   Company  @relation(fields: [companyId], references: [id])
+  leads     Lead[]
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id           String      @id @default(uuid())
+  name         String
+  email        String      @unique
+  contact      String
+  status       LeadStatus
+  stage        LeadStage
+  source       String
+  companyId    String
+
+  @@index([companyId])
+  @@index([productId])
+  company      Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  city         String
+  state        String
+  productId    String?
+  product      Product?    @relation(fields: [productId], references: [id])
+  price        Float
+  comments     String?
+  followUps    FollowUp[]
+  executiveId  String?
+
+  @@index([executiveId])
+  executive    Executive?  @relation(fields: [executiveId], references: [id])
+  dealerId     String?
+  dealer       Dealer?     @relation(fields: [dealerId], references: [id])
+  @@index([dealerId])
+  createdAt    DateTime    @default(now())
+}
+
+model FollowUp {
+  id        String   @id @default(uuid())
+  leadId    String   
+  @@index([leadId])
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  status    String
+  stage     String
+  date      DateTime
+  time      String
+  message   String
+  createdAt DateTime @default(now())
 }

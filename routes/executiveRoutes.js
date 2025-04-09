@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const {
-  signUp,
   deleteUser,
   currentUser,
   login,
@@ -12,7 +11,6 @@ const {
 } = require("../controllers/userController");
 const { isAuthenticated } = require("../middlewares/auth");
 
-router.post("/signup", signUp);
 router.post("/signin", login);
 router.get("/", isAuthenticated, currentUser);
 router.put("/update", isAuthenticated, updateUser);

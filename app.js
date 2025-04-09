@@ -1,15 +1,11 @@
 const express = require("express");
 const logger = require("morgan");
 const cookieParser = require("cookie-parser");
+const cors = require("cors");
 const dotenv = require("dotenv");
 const ErrorHandler = require("./utils/errorHandler");
-const user = require("./routes/userRoutes");
-const business = require("./routes/businessRoute");
-const address = require("./routes/addressRoute");
 const admin = require("./routes/adminRoute");
-
-const categoryRoutes = require("./routes/categoryRoute");
-const productRoutes = require("./routes/productRoute");
+const dealer = require("./routes/dealersRoutes");
 const { generatedErrors } = require("./middlewares/errors");
 
 dotenv.config({ path: "./.env" });
@@ -18,20 +14,18 @@ const app = express();
 app.use(cookieParser());
 app.use(express.json());
 app.use(logger("tiny"));
-
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
 app.use(express.urlencoded({ extended: false }));
-
-app.use("/user", user);
 app.use("/admin", admin);
-
-app.use("/business", business);
-app.use("/address", address);
-
-app.use("/category", categoryRoutes);
-app.use("/product", productRoutes);
+app.use("/dealer", dealer);
 
 app.get("/", (req, res) => {
-  res.json({ msg: "Hello👋, From Server" });
+  res.json("Hello👋, From Server");
 });
 
 app.all("*", (req, res, next) => {
